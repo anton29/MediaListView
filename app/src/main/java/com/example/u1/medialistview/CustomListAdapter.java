@@ -5,9 +5,10 @@ package com.example.u1.medialistview;
  */
 import android.app.Activity;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.media.ThumbnailUtils;
-import android.net.Uri;
+import android.location.Address;
+import android.location.Geocoder;
+import android.media.ExifInterface;
+import android.media.MediaMetadataRetriever;
 import android.os.Environment;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -17,45 +18,58 @@ import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import java.io.File;
-import java.lang.reflect.Array;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 
 public class CustomListAdapter extends ArrayAdapter<String> {
-    final int THUMBSIZE = 128;
     private final Activity context;
     private final ArrayList<String> itemname;
     private final ArrayList<Bitmap> imgid;
+    private final ArrayList<String> knownLocationArray;
+//    Geocoder geocoder;
 
 
-    public CustomListAdapter(Activity context, ArrayList<String> itemname, ArrayList<Bitmap> imgid) {
+    public CustomListAdapter(Activity context, ArrayList<String> itemname, ArrayList<Bitmap> imgid, ArrayList<String> knownLocationArray) {
         super(context, R.layout.list_item, itemname);
         // TODO Auto-generated constructor stub
         Log.v("called","called");
         this.context=context;
         this.itemname=itemname;
         this.imgid=imgid;
+        this.knownLocationArray =knownLocationArray;
+//         geocoder = new Geocoder(context, Locale.getDefault());
 
     }
 
 
-
-//    public ArrayList<Bitmap> bitmaps(ArrayList<String> itemname){
-//        Log.v("size" , String.valueOf(itemname.size()));
-//        ArrayList<Bitmap> thumbImageArray = new ArrayList<Bitmap>();
-//        for(int i = 0;i < itemname.size();i++){
-//            Bitmap ThumbImage = ThumbnailUtils.extractThumbnail(
-//                    BitmapFactory.decodeFile( Environment.getExternalStorageDirectory()+ "/DCIM/Camera/" + itemname.get(i) ),
-//                    THUMBSIZE,
-//                    THUMBSIZE);
-//            thumbImageArray.add(ThumbImage);
-//        }
-//        Log.v("array", String.valueOf(thumbImageArray));
-//        return thumbImageArray;
-//    }
-
     @Override
     public View getView(int position,View view,ViewGroup parent) {
+//        List<Address> addresses;
+//        try {
+//            addresses = geocoder.getFromLocation(28.3570, -081.5606, 1);
+//            String address = addresses.get(0).getAddressLine(0);
+//            Log.v("l",address);
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+
+
+//        MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+//        retriever.setDataSource(Environment.getExternalStorageDirectory() +"/DCIM/Camera/"+itemname.get(position));
+//       String test = retriever.extractMetadata(retriever.METADATA_KEY_LOCATION);
+//        Log.v("test",""+test);
+//        retriever.release();
+
+//        try {
+//            exifInterface = new ExifInterface(Environment.getExternalStorageDirectory() +"/DCIM/Camera/"+itemname.get(position) );
+//            if(exifInterface != null){
+//                Log.v("test","time"+ exifInterface.getAttribute(ExifInterface.TAG_DATETIME));
+//            }
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
         LayoutInflater inflater=context.getLayoutInflater();
         View rowView=inflater.inflate(R.layout.list_item, null,true);
 
@@ -64,17 +78,14 @@ public class CustomListAdapter extends ArrayAdapter<String> {
         TextView extratxt = (TextView) rowView.findViewById(R.id.textView1);
 
         txtTitle.setText(itemname.get(position));
-//        File file = new File(Environment.getExternalStorageDirectory()+ "/DCIM/Camera/" + itemname.get(position));
 
-//        Log.v("calling", "Create new thubImage");
-//        Bitmap ThumbImage = ThumbnailUtils.extractThumbnail(
-//                BitmapFactory.decodeFile( Environment.getExternalStorageDirectory()+ "/DCIM/Camera/" + itemname.get(position) ),
-//                THUMBSIZE,
-//                THUMBSIZE);
-//
-//        imageView.setImageBitmap(ThumbImage);
         imageView.setImageBitmap(imgid.get(position));
-        extratxt.setText("Description "+ itemname.get(position));
+        if(knownLocationArray.get(position) != null){
+            extratxt.setText("Location: "+"\n"+ knownLocationArray.get(position));
+        }else{
+            extratxt.setText("");
+        }
+
         return rowView;
 
     };

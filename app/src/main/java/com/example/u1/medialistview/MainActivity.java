@@ -2,50 +2,45 @@ package com.example.u1.medialistview;
 
 import android.Manifest;
 import android.app.Activity;
-import android.app.FragmentManager;
-import android.app.FragmentTransaction;
-import android.app.ListActivity;
 import android.app.ProgressDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
+import android.location.Address;
+import android.location.Geocoder;
+import android.media.MediaMetadataRetriever;
 import android.media.ThumbnailUtils;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.support.v7.app.AlertDialog;
-import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.ListView;
-import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 public class MainActivity extends Activity {
 
     final private int REQUEST_CODE_ASK_MULTIPLE_PERMISSIONS = 124;
-    final int THUMBSIZE = 128;
     ListView list;
     ArrayList<String> itemname ;
-
-//    ArrayList<String> imgid = GetFiles(Environment.getExternalStorageDirectory() + "/DCIM/Camera");
-    private int progressStatus = 0;
-    private  ArrayList<Bitmap> thumbImageArray =null;
-
-
+    Geocoder geocoder;
     public ArrayList<String> getItemname() {
         return itemname;
     }
@@ -58,69 +53,94 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        requestPerssion();
+        geocoder = new Geocoder(this, Locale.getDefault());
+        requestPermission();
     }
 
 
 
     private class MyTask extends AsyncTask<ArrayList<String> ,Integer, ArrayList<Bitmap> > {
-        ProgressDialog barProgressDialog;
+        ProgressDialog progressBarDialog;
         private final Activity parent;
+        ArrayList<String> knownLocationArray;
 
 
 
         public MyTask(final Activity parent) {
             this.parent = parent;
+        }
 
+        private boolean isNetworkAvailable() {
+            ConnectivityManager connectivityManager
+                    = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+            NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+            return activeNetworkInfo != null && activeNetworkInfo.isConnected();
         }
 
         @Override
         protected void onPreExecute() {
-            barProgressDialog = new ProgressDialog(parent);
-            barProgressDialog.setTitle("Loading Media ...");
-            barProgressDialog.setMessage(" In progress ...");
-            barProgressDialog.setProgressStyle(barProgressDialog.STYLE_HORIZONTAL);
-            barProgressDialog.setProgress(0);
-            barProgressDialog.setMax(itemname.size());
-            barProgressDialog.show();
-            barProgressDialog.setCancelable(false);
+            progressBarDialog = new ProgressDialog(parent);
+            progressBarDialog.setTitle("Loading Media ...");
+            progressBarDialog.setMessage(" In progress ...");
+            progressBarDialog.setProgressStyle(progressBarDialog.STYLE_HORIZONTAL);
+            progressBarDialog.setProgress(0);
+            progressBarDialog.setMax(itemname.size());
+            progressBarDialog.show();
+            progressBarDialog.setCancelable(false);
         }
 
         @Override
         protected ArrayList<Bitmap> doInBackground(ArrayList<String>... arrayLists) {
 
             ArrayList<Bitmap> thumbImageArray = new ArrayList<Bitmap>();
+            knownLocationArray = new ArrayList<String>();
             for(int i = 0;i < itemname.size();i++){
                 publishProgress();
-//                Bitmap ThumbImage = ThumbnailUtils.extractThumbnail(
-//                        BitmapFactory.decodeFile( Environment.getExternalStorageDirectory()+ "/DCIM/Camera/" + itemname.get(i) ),
-//                        THUMBSIZE,
-//                        THUMBSIZE);
-                // MINI_KIND: 512 x 384 thumbnail
-                // MICRO_KIND: 96 x 96 thumbnail
-                Bitmap ThumbImage = ThumbnailUtils.createVideoThumbnail(Environment.getExternalStorageDirectory()+ "/DCIM/Camera/" + itemname.get(i), MediaStore.Video.Thumbnails.MINI_KIND);
+                List<Address> addresses;
+                MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+                retriever.setDataSource(Environment.getExternalStorageDirectory() +"/DCIM/Camera/"+itemname.get(i));
+                String location = retriever.extractMetadata(retriever.METADATA_KEY_LOCATION);
+//                Log.v("test",""+location);
+                Log.v("testing","net");
+                Log.v("testing", String.valueOf(""+isNetworkAvailable()));
+                if(location != null && isNetworkAvailable() != false){
+                    try {
+                        String delimiter = "(?=\\b[+-])";
+                        String[] splitted = location.split(delimiter);
+                        addresses = geocoder.getFromLocation(Double.parseDouble(splitted[0]), Double.parseDouble(splitted[1]), 1);
+                        String address = addresses.get(0).getAddressLine(0);
+
+                        knownLocationArray.add(address);
+                    } catch (IOException e) {
+                        knownLocationArray.add(null);
+                        e.printStackTrace();
+                    }
+                }else{
+                    knownLocationArray.add(null);
+                }
+
+//                MICRO_KIND type will generate thumbnail of size 96 x 96.
+//                MINI_KIND type will generate thumbnail of size 512 x 384.
+//                set to 100dp 100dp in xml , micro too small mini un-uniformed sizes
+                Bitmap ThumbImage = ThumbnailUtils.createVideoThumbnail(Environment.getExternalStorageDirectory()+ "/DCIM/Camera/" + itemname.get(i), MediaStore.Video.Thumbnails.MICRO_KIND);
                 thumbImageArray.add(ThumbImage);
+                retriever.release();
             }
-//            Log.v("array", String.valueOf(thumbImageArray));
             return thumbImageArray;
         }
 
         @Override
         protected void onProgressUpdate(final Integer... values) {
-            barProgressDialog.incrementProgressBy(1);
+            progressBarDialog.incrementProgressBy(1);
 
 
         }
 
         @Override
         protected void onPostExecute(ArrayList<Bitmap> bitmapArray){
-//            setThumbImageArray(bitmapArray);
 
-            barProgressDialog.dismiss();
-
-//            Log.v("array task", String.valueOf(bitmapArray.size()));
-
-            CustomListAdapter adapter=new CustomListAdapter(getActivity(), getItemname(), bitmapArray);
+            progressBarDialog.dismiss();
+            CustomListAdapter adapter=new CustomListAdapter(getActivity(), getItemname(), bitmapArray, knownLocationArray);
             list=(ListView)findViewById(R.id.list);
             list.setAdapter(adapter);
 
@@ -170,7 +190,7 @@ public class MainActivity extends Activity {
 
 
 
-    public void requestPerssion () {
+    public void requestPermission() {
         List<String> permissionsNeeded = new ArrayList<String>();
 
         final List<String> permissionsList = new ArrayList<String>();
@@ -219,13 +239,15 @@ public class MainActivity extends Activity {
                 perms.put(Manifest.permission.READ_EXTERNAL_STORAGE, PackageManager.PERMISSION_GRANTED);
                 perms.put(Manifest.permission.ACCESS_WIFI_STATE, PackageManager.PERMISSION_GRANTED);
                 perms.put(Manifest.permission.INTERNET, PackageManager.PERMISSION_GRANTED);
+                perms.put(Manifest.permission.ACCESS_NETWORK_STATE, PackageManager.PERMISSION_GRANTED);
                 // Fill with results
                 for (int i = 0; i < permissions.length; i++)
                     perms.put(permissions[i], grantResults[i]);
                 // Check for ACCESS_FINE_LOCATION
                 if (perms.get(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
                         && perms.get(Manifest.permission.ACCESS_WIFI_STATE) == PackageManager.PERMISSION_GRANTED
-                        && perms.get(Manifest.permission.INTERNET) == PackageManager.PERMISSION_GRANTED) {
+                        && perms.get(Manifest.permission.INTERNET) == PackageManager.PERMISSION_GRANTED
+                        && perms.get(Manifest.permission.ACCESS_NETWORK_STATE) == PackageManager.PERMISSION_GRANTED) {
                     // All Permissions Granted
                     itemname = GetFiles(Environment.getExternalStorageDirectory() + "/DCIM/Camera");
                     new MyTask(this).execute(itemname);
@@ -264,4 +286,19 @@ public class MainActivity extends Activity {
         }
         return true;
     }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        Log.v("status", "resume");
+    }
+
+
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        Log.v("status","pause");
+    }
+
 }

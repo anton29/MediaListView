@@ -1,5 +1,6 @@
 package com.example.u1.medialistview;
 
+import android.app.Activity;
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
 import android.content.Context;
@@ -9,11 +10,12 @@ import android.os.Bundle;
 import android.util.Log;
 
 public class VideoActivity extends AppCompatActivity {
-    Context activity;
 
-    public Context getActivity() {
-        return activity;
-    }
+//    Activity activity;
+//
+//    public Activity getVideoActivity() {
+//        return activity;
+//    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -28,7 +30,6 @@ public class VideoActivity extends AppCompatActivity {
         bundle.putString("videoPath", value);
         ViewFragment fr = new ViewFragment();
         fr.setArguments(bundle);
-//                    fr.setArguments(itemname);
         FragmentManager fm = getFragmentManager();
         FragmentTransaction fragmentTransaction = fm.beginTransaction();
         fragmentTransaction.replace(R.id.fooFragment,fr);
